@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<body onload="init()">
+    <canvas id="myCanvas" width="640" height="480"></canvas>
+    <b>Light direction</b><br>
+    <input type="range" id="x" min="-20" max="20" value="2" step="1">X<br>
+    <input type="range" id="y" min="-20" max="20" value="-8" step="1">Y<br>
+    <input type="range" id="z" min="-20" max="20" value="-8" step="1">Z<br>
+    Step: <input type="text" value="0.01" id="step"><br><br>
+      <button id="change"  type="button" name="button">CHANGE</button>
+    <b>Texture:</b>
+      <input type="radio" name="Texture" value="earth" checked> Earth
+      <input type="radio" name="Texture" value="sky"> Sky
+</body>
+<head>
+    <title>WebGL textures: sphere</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+
+    <script id="shaderVs" type="x-shader/x-vertex">
+        attribute vec4 a_Position;
+        attribute vec2 a_TexCoord;
+        attribute vec3 a_Normal;
+
+        uniform mat4 u_pMatrix;
+        uniform mat4 u_vMatrix;
+        uniform mat4 u_mvMatrix;
+
+        varying vec2 v_TexCoord;
+        varying highp vec4 v_Color;
+        varying highp vec3 v_Normal;
+
+        void main() {
+            gl_Position = u_pMatrix * u_vMatrix * u_mvMatrix * a_Position;
+            //Me da textura al circulo.
+            v_TexCoord = a_TexCoord;
+
+            v_Normal = normalize(a_Normal - vec3(gl_Position));
+        }
+    </script>
+
+    <script id="shaderFs" type="x-shader/x-fragment">
+        precision highp float;
+        precision mediump float;
+
+        uniform vec3 u_LightColor;
+        uniform vec3 u_LightDirection;
+
+        uniform sampler2D u_Sampler;
+        varying vec2 v_TexCoord;
+        varying highp vec3 v_Normal;
+
+        void main(void) {
+          //para numero mayor de 0.0 aumenta mucho la iluminacion de la tierraa
+          //para numeros menores que cero no hace nada
+          float nDotL = max(dot(u_LightDirection, v_Normal), 0.0);
+          vec4 color =texture2D(u_Sampler, v_TexCoord);
+
+          vec3 diffuse = u_LightColor * color.rgb * nDotL;
+          //este vector forma la tierra
+          gl_FragColor = vec4(diffuse, color.a);
+        }
+    </script>
+
+    <script>
+        var gl;
+        var count = 0.0;
+        const LATITUDE_BANDS = 30;
+        const LONGITUDE_BANDS = 30;
+        //es el radio de la tierra
+        const RADIUS = 1.0;
+        var x_o = 0;
+        var y_o  = 0;
+        var img = 'earth.png'
+        console.log(img);
+
+        function init() {
+            // Get canvas object from the DOM
+            var canvas = document.getElementById("myCanvas");
+
+            // Init WebGL context
+            gl = canvas.getContext("webgl");
+            if (!gl) {
+                console.log("Failed to get the rendering context for WebGL");
+                return;
+            }
+
+            // Init shaders
+            var vs = document.getElementById('shaderVs').innerHTML;
+            var fs = document.getElementById('shaderFs').innerHTML;
+            //le metemos gl, vs(primer script), fs(segunndo script)
+            initShaders(gl, vs, fs);
+
+            // Init vertex shader
+            initVertexShader(gl);
+
+            // Init projection matrix
+            initProjection(gl, canvas);
+
+            // Set clear canvas color
+            //color de fondo del canvas
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
+            // Hidden surface removal
+            gl.enable(gl.DEPTH_TEST);
+
+            // Init textures
+
+            initTexturesAndDraw(gl, canvas);
+
+        }
+
+        function initVertexShader(gl) {
+            // Vertexes and textures coordinates
+            //textura y giro de la tierra
+            var vertexesAndTextures = [];
+            var normals = [];
+            for (var i = 0; i <= LATITUDE_BANDS; i++) {
+                var theta = i * Math.PI / LATITUDE_BANDS;
+                var sinTheta = Math.sin(theta);
+                var cosTheta = Math.cos(theta);
+
+                for (var j = 0; j <= LONGITUDE_BANDS; j++) {
+                    var phi = j * 2 * Math.PI / LONGITUDE_BANDS;
+                    var sinPhi = Math.sin(phi);
+                    var cosPhi = Math.cos(phi);
+
+                    var x = sinPhi * sinTheta;
+                    var y = cosTheta;
+                    var z = cosPhi * sinTheta;
+
+                    vertexesAndTextures.push(RADIUS * x);
+                    vertexesAndTextures.push(RADIUS * y);
+                    vertexesAndTextures.push(RADIUS * z);
+
+                    normals.push(x, y, z);
+
+                    var u = 1 - (j / LONGITUDE_BANDS);
+                    var v = 1 - (i / LATITUDE_BANDS);
+
+                    vertexesAndTextures.push(u);
+                    vertexesAndTextures.push(v);
+                }
+            }
+
+            // Indexes
+            var indexes = [];
+            for (var i = 0; i < LATITUDE_BANDS; i++) {
+                for (var j = 0; j < LONGITUDE_BANDS; j++) {
+                    var first = i * (LONGITUDE_BANDS + 1) + j;
+                    var second = first + LONGITUDE_BANDS + 1;
+
+                    indexes.push(first);
+                    indexes.push(second);
+                    indexes.push(first + 1);
+
+                    indexes.push(second + 1);
+                    indexes.push(first + 1);
+                    indexes.push(second);
+                }
+            }
+
+            // Write a_Position and a_TexCoord using gl.ARRAY_BUFFER
+            gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexesAndTextures), gl.STATIC_DRAW);
+
+            var vertexPositionAttribute = gl.getAttribLocation(gl.program, "a_Position");
+            gl.enableVertexAttribArray(vertexPositionAttribute);
+            gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 4 * (3 + 2), 0);
+
+            var vertexColorAttribute = gl.getAttribLocation(gl.program, "a_TexCoord");
+            gl.enableVertexAttribArray(vertexColorAttribute);
+            gl.vertexAttribPointer(vertexColorAttribute, 2, gl.FLOAT, false, 4 * (3 + 2), 4 * 3);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+
+            var vertexNormalAttribute = gl.getAttribLocation(gl.program, "a_Normal");
+            gl.enableVertexAttribArray(vertexNormalAttribute);
+            gl.vertexAttribPointer(vertexNormalAttribute, 3, gl.FLOAT, false, 0, 0);
+
+            // Write indexes in gl.ELEMENT_ARRAY_BUFFER
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer());
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexes), gl.STATIC_DRAW);
+        }
+
+        function initProjection(gl, canvas) {
+            // Write u_pMatrix
+            var pMatrixUniform = gl.getUniformLocation(gl.program, "u_pMatrix");
+            //el ratio lo divimos por el ancho y el largo del canvas para que
+            //el circulo tenga las misma proporciones y sea un circulo
+            //si cambiamos el valor del ratio>1.3 la tierra se aplasta por los
+            //laterales si ratio<1.3 se aplasta por los polos
+            var ratio = canvas.width / canvas.height;
+            //con el valor de 150 jugamos con la distancia de la tierra y si se
+            //ve del derecho o del reves
+            //el 0.1 tiene que ver con la luz, cuanto mas alto menos luz
+            var pMatrix = mat4.perspective(mat4.create(), 150, ratio, 0.1, 100);
+            gl.uniformMatrix4fv(pMatrixUniform, false, pMatrix);
+
+            // Write u_vMatrix
+            var vMatrixUniform = gl.getUniformLocation(gl.program, "u_vMatrix");
+            //los valores [alejar la tierra hacia atras,alejarla mientras se
+            //gira sobre ella misma,-3], [se desplaza a la izq, se desplaza arriba,0],
+            //[la tierra gira sobre si misma hacia arriba, la tierra gira sobre si misma
+            //hacia la izq,-]
+
+            //esta funcion mueve la tierra alante y atras
+            document.onkeydown = function (ev) {
+              var step = new Number(document.getElementById("step").value);
+              switch (ev.keyCode) {
+                case 38: // Left
+                  x_o=x_o-step;
+                  break;
+                case 40: // Right
+                  x_o=x_o+step;
+                  break;
+                case 37: // Left
+                  y_o=y_o-step;
+                  break;
+                case 39: // Right
+                  y_o=y_o+step;
+                  break;
+                }
+              }
+            var change = document.getElementById('change');
+            change.onclick = function (ev) {
+            var texture = document.querySelector('input[name="Texture"]:checked').value;
+              if (texture == 'earth') {
+                img = 'earth.png'
+                console.log('entra en tierra');
+              }else if (texture == 'sky') {
+                img = 'sky.jpg'
+                console.log('entra en cielo');
+              }
+              var image = new Image();
+              image.src = img;
+              image.onload = function () {
+                  //si ponemos true la imagen se implementa del reves
+                  //leo la textura y dibujo la escena
+                  loadTexture(gl, "u_Sampler", image, 0, false);
+                }
+            }
+            var vMatrix = mat4.lookAt(mat4.create(), [x_o, 0, -3], [y_o, 0, 0], [0, 1, 0]);
+            gl.uniformMatrix4fv(vMatrixUniform, false, vMatrix);
+
+            // Write u_LightColor
+            //este es el color de la luz
+            var lightColor = [ 1.0, 1.0, 1.0 ]; // white
+            var lightColorUniform = gl.getUniformLocation(gl.program, "u_LightColor");
+            gl.uniform3fv(lightColorUniform, lightColor);
+
+            // Write u_LightDirection
+            //me declaro las variables de los imput(barras de deslizamiento) y
+            //en el body les meto el valor de id, en este caso x,y,z
+            var x = document.getElementById("x").value;
+            var y = document.getElementById("y").value;
+            var z = document.getElementById("z").value;
+            //segun mueva las barras le vamos a dar a x,y,z un valor y va a ser
+            //la direccion de la luz
+            //si queremos darle a la luz una posicion fija debemos poner valores
+            //fijos en la siguiente funcion
+            var lightDirection = [ x, y, z ];
+            vec3.normalize(lightDirection, lightDirection);
+            var lightDirectionUniform = gl.getUniformLocation(gl.program, "u_LightDirection");
+            gl.uniform3fv(lightDirectionUniform, lightDirection);
+
+        }
+
+        function initTexturesAndDraw(gl, canvas) {
+          //esta es la textura de la tierra, la imagen que implementamos
+          //la inicializo
+            var image = new Image();
+            image.src = img;
+            image.onload = function () {
+                //si ponemos true la imagen se implementa del reves
+                //leo la textura y dibujo la escena
+                loadTexture(gl, "u_Sampler", image, 0, false);
+                drawScene(gl, canvas);
+            };
+        }
+
+        function loadTexture(gl, samplerUniform, image, unitNumber, flip) {
+            // Flip the image's y axis
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
+
+            // Activate and configure texture
+            gl.activeTexture(gl.TEXTURE0 + unitNumber);
+            gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+            // Set texture to the sampler
+            var fragmentSamplerUniform = gl.getUniformLocation(gl.program, samplerUniform);
+            gl.uniform1i(fragmentSamplerUniform, unitNumber);
+        }
+
+        function drawScene(gl, canvas) {
+            initProjection(gl, canvas);
+            // Clear
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            // Rotate [gira hacia arriba, gira hacia la izq, gira derecha]
+            //en el count le damos velocidad a la tierra
+            var mvMatrix = mat4.fromRotation(mat4.create(), count, [0.0, 0.3, 0.0]);
+            var uMvMatrix = gl.getUniformLocation(gl.program, "u_mvMatrix");
+            gl.uniformMatrix4fv(uMvMatrix, false, mvMatrix);
+
+            // Draw
+            //si cambiamos el 3 y el 2 lo que hacemos es cortar la tierra por
+            //distintos puntos
+            gl.drawElements(gl.TRIANGLES, LATITUDE_BANDS * LONGITUDE_BANDS * 3 * 2, gl.UNSIGNED_SHORT, 0);
+
+            // Call drawScene again in the next browser repaint
+            //VELOCIDAD DEL GIRO
+            count += 0.01;
+
+            requestAnimationFrame(function(){
+              drawScene(gl, canvas);
+            });
+        }
+
+        function initShaders(gl, vs_source, fs_source) {
+            // Compile shaders
+            var vertexShader = makeShader(gl, vs_source, gl.VERTEX_SHADER);
+            var fragmentShader = makeShader(gl, fs_source, gl.FRAGMENT_SHADER);
+
+            // Create program
+            var glProgram = gl.createProgram();
+
+            // Attach and link shaders to the program
+            gl.attachShader(glProgram, vertexShader);
+            gl.attachShader(glProgram, fragmentShader);
+            gl.linkProgram(glProgram);
+
+            // Use program
+            gl.useProgram(glProgram);
+            gl.program = glProgram;
+        }
+
+        function makeShader(gl, src, type) {
+            var shader = gl.createShader(type);
+            gl.shaderSource(shader, src);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                alert("Error compiling shader: " + gl.getShaderInfoLog(shader));
+                return;
+            }
+            return shader;
+        }
+    </script>
+
+</head>
+
+</html>
