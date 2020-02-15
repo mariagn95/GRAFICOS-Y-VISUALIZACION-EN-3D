@@ -1,0 +1,16 @@
+Al iniciarse la aplicación el canvas contendrá un triángulo rojo centrado en el canvas.
+Se capturan las pulsaciones de teclado en la página web, de modo que se realizarán las
+siguientes transformaciones al triángulo en función de la tecla pulsada:
+o Flecha izquierda: Traslación a la izquierda del eje X (el triángulo se mueve la izquierda)
+o Flecha derecha: Traslación a la derecha del eje X (el triángulo se mueve la derecha)
+o Flecha arriba: Traslación hacia arriba en el eje Y (el triángulo se mueve hacia arriba)
+o Flecha abajo: Traslación hacia abajo en el eje Y (el triángulo se mueve hacia abajo)
+o Tecla RePag (PgUp): Aumento de escala (el triángulo se hace más grande)
+o Tecla AvPag (PgDown): Contracción de escala (el Asegúrate de desactivar triángulo se hace más pequeño) el bloqueo numérico si
+o Tecla Inicio (Home): Giro positivo según el eje X usas estas teclas
+o Tecla Fin (End): Giro negativo según el eje X
+
+El valor del cambio para cada una de las transformaciones será configurable desde la
+interfaz de usuario de la página web. En otras palabras, habrá un campo de texto que
+será leído desde JavaScript para averiguar el valor de cambio de la transformación. Por
+defecto este campo tendrá un valor de 0.01.
