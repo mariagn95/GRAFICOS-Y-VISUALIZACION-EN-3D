@@ -1,0 +1,8 @@
+Al hacer click en el canvas, mediante JavaScript se localizará la posición de las
+coordenadas de ese click, pintando un nuevo punto de 10 pixeles en el canvas en
+dicha posición mediante WebGL
+El color del punto estará determinado por la posición del click:
+o Color rojo en el cuadrante superior derecha.
+o Color verde en el cuadrante inferior derecha.
+o Color azul en el cuadrante inferior izquierda.
+o Color blanco en el cuadrante superior izquierda.
