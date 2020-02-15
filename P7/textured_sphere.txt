@@ -1,0 +1,3 @@
+Se anade iluminación por luz direccional (reflexión difusa) calculada por fragmento (degradado realista).
+Las coordenadas de la dirección de la luz (X, Y, Z) se podrán cambiar mediante botones de
+rango en la interfaz de usuario de la página web.
