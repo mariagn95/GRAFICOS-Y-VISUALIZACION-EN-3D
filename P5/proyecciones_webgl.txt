@@ -1,0 +1,16 @@
+La rotación del cubo se podrá desactivar desde la interfaz de usuario mediante una
+casilla de verificación (checkbox).
+
+La primitiva WebGL usada para dibujar la escena se podrá elegir desde la interfaz de
+usuario mediante botones de opción (radio buttons). Las primitivas serán triángulos
+( gl.TRIANGLES , opción por defecto) y líneas ( gl.LINES ).
+
+El tipo de proyección usado para dibujar la escena se podría elegir desde la interfaz de
+usuario mediante botones de opción (radio buttons). Las opciones son 2: proyección
+en perspectiva (opción por defecto) y ortogonal.
+
+Se deberá incluir un manejador de evento que escuche la rueda del ratón ( wheel ) en
+toda la página web de modo que al girar la rueda hacia delante se incremente en una
+unidad la coordenada z de la posición inicial de la cámara (implementada con la
+función mat4.lookAt() del ejemplo original). Cuando la rueda gire en el sentido
+inverso, la coordenada z de la posición de la cámara se decrementará en 1 unidad.
