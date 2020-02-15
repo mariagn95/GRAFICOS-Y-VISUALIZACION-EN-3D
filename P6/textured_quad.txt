@@ -1,0 +1,5 @@
+La posición de las coordenadas de textura (s,t) de modo que la imagen quede centrada en una rejilla de 3x3
+Se añaden dos nuevos filtros en la textura para configurar lo que ocurre con la
+imagen en el eje s ( gl.TEXTURE_WRAP_S ) y eje t ( gl.TEXTURE_WRAP_T ).
+El valor de este nuevo filtrado será seleccionable desde la interfaz de usuario mediante
+botones de radio: gl.REPEAT , gl.MIRRORED_REPEAT , o gl.CLAMP_TO_EDGE .
